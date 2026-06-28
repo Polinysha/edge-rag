@@ -1,6 +1,6 @@
 """
-Превращение текста в вектор (embedding) через sentence-transformers/all-MiniLM-L6-v2.
-Модель загружается один раз при импорте модуля, не на каждый вызов.
+Turning text into a vector (embedding) via sentence-transformers/all-MiniLM-L6-v2.
+The model is loaded once at module import, not on every call.
 """
 
 from sentence_transformers import SentenceTransformer
@@ -13,8 +13,8 @@ _model = SentenceTransformer(MODEL_NAME, device="cpu")
 
 def embed(texts: str | list[str]) -> list[float] | list[list[float]]:
     """
-    Принимает строку или список строк, возвращает вектор(ы) размерности 384.
-    Для одной строки — список из 384 float. Для списка строк — список таких списков.
+    Takes a string or a list of strings, returns vector(s) of size 384.
+    For a single string — a list of 384 floats. For a list of strings — a list of such lists.
     """
     is_single = isinstance(texts, str)
     input_texts = [texts] if is_single else texts
@@ -25,8 +25,8 @@ def embed(texts: str | list[str]) -> list[float] | list[list[float]]:
 
 
 if __name__ == "__main__":
-    v1 = embed("тест")
-    print(f"embed('тест') -> вектор длины {len(v1)}")
+    v1 = embed("test")
+    print(f"embed('test') -> vector of length {len(v1)}")
 
     v2 = embed(["a", "b"])
-    print(f"embed(['a', 'b']) -> {len(v2)} векторов, каждый длины {len(v2[0])}")
+    print(f"embed(['a', 'b']) -> {len(v2)} vectors, each of length {len(v2[0])}")

@@ -1,7 +1,7 @@
 """
-Юнит-тесты на chunking.py.
+Unit tests for chunking.py.
 
-Запуск:
+Run:
     uv run pytest tests/unit/test_chunking.py -v
 """
 
@@ -19,17 +19,17 @@ def make_page(text: str, page_num: int = 1, source: str = "test.pdf") -> dict:
 
 class TestChunkPages:
 
-    def test_не_превышает_chunk_size_с_большим_запасом(self):
-        long_text = "слово " * 500  # заведомо длинный текст
+    def test_does_not_exceed_chunk_size_with_large_margin(self):
+        long_text = "word " * 500  # deliberately long text
         pages = [make_page(long_text)]
         chunks = chunk_pages(pages)
 
         for c in chunks:
-            # допускаем небольшой запас сверху, но не больше чем в 1.5 раза
+            # allow a small margin, but no more than 1.5x the target size
             assert len(c["text"]) <= CHUNK_SIZE * 1.5
 
-    def test_сохраняет_все_метаданные(self):
-        pages = [make_page("какой-то текст страницы", page_num=3, source="doc.pdf")]
+    def test_preserves_all_metadata(self):
+        pages = [make_page("some page text", page_num=3, source="doc.pdf")]
         chunks = chunk_pages(pages)
 
         assert len(chunks) > 0
@@ -39,32 +39,32 @@ class TestChunkPages:
             assert "chunk_idx" in c
             assert "text" in c
 
-    def test_chunk_idx_растёт_по_порядку(self):
-        pages = [make_page("текст " * 200, page_num=1)]
+    def test_chunk_idx_increases_in_order(self):
+        pages = [make_page("text " * 200, page_num=1)]
         chunks = chunk_pages(pages)
 
         indices = [c["chunk_idx"] for c in chunks]
         assert indices == sorted(indices)
         assert indices == list(range(len(indices)))
 
-    def test_число_чанков_растёт_с_объёмом_текста(self):
-        short_pages = [make_page("короткий текст")]
-        long_pages = [make_page("длинный текст " * 300)]
+    def test_chunk_count_grows_with_text_volume(self):
+        short_pages = [make_page("short text")]
+        long_pages = [make_page("long text " * 300)]
 
         short_chunks = chunk_pages(short_pages)
         long_chunks = chunk_pages(long_pages)
 
         assert len(long_chunks) > len(short_chunks)
 
-    def test_пустая_страница_не_создаёт_чанков(self):
+    def test_empty_page_produces_no_chunks(self):
         pages = [make_page("")]
         chunks = chunk_pages(pages)
         assert len(chunks) == 0
 
-    def test_несколько_страниц_дают_сквозную_нумерацию_chunk_idx(self):
+    def test_multiple_pages_get_continuous_chunk_idx(self):
         pages = [
-            make_page("текст первой страницы " * 50, page_num=1),
-            make_page("текст второй страницы " * 50, page_num=2),
+            make_page("first page text " * 50, page_num=1),
+            make_page("second page text " * 50, page_num=2),
         ]
         chunks = chunk_pages(pages)
 
@@ -73,7 +73,7 @@ class TestChunkPages:
 
         assert len(page1_chunks) > 0
         assert len(page2_chunks) > 0
-        # chunk_idx сквозной, не сбрасывается на новой странице
+        # chunk_idx is continuous, not reset on a new page
         assert page2_chunks[0]["chunk_idx"] > page1_chunks[-1]["chunk_idx"]
 
 

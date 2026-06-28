@@ -1,6 +1,6 @@
 """
-Базовый поиск по векторной близости (dense search) — основа retrieval,
-на которую позже нарастится hybrid search (dense + sparse).
+Basic dense vector search — the foundation of retrieval,
+which will later be extended into hybrid search (dense + sparse).
 """
 
 from src.pipeline.qdrant_setup import client, COLLECTION_NAME
@@ -9,8 +9,8 @@ from src.pipeline.embedding import embed
 
 def search(question: str, top_k: int = 5) -> list[dict]:
     """
-    Векторизует вопрос и ищет top_k самых похожих чанков в Qdrant.
-    Возвращает список словарей: {text, source, page_num, chunk_idx, score}.
+    Vectorizes the question and searches for the top_k most similar chunks in Qdrant.
+    Returns a list of dicts: {text, source, page_num, chunk_idx, score}.
     """
     query_vector = embed(question)
 
@@ -35,11 +35,11 @@ def search(question: str, top_k: int = 5) -> list[dict]:
 
 if __name__ == "__main__":
     import sys
-    question = sys.argv[1] if len(sys.argv) > 1 else "об организации практики"
+    question = sys.argv[1] if len(sys.argv) > 1 else "test question"
 
     results = search(question, top_k=5)
-    print(f"Вопрос: {question!r}")
-    print(f"Найдено результатов: {len(results)}")
+    print(f"Question: {question!r}")
+    print(f"Results found: {len(results)}")
     print()
     for r in results:
         print(f"score={r['score']:.4f}  page={r['page_num']}  chunk_idx={r['chunk_idx']}")

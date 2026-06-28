@@ -1,6 +1,6 @@
 """
-Подключение к Qdrant и создание коллекции для гибридного поиска
-(dense-вектор для смыслового поиска + sparse-вектор для BM25-поиска по словам).
+Qdrant connection and collection creation for hybrid search
+(dense vector for semantic search + sparse vector for BM25 keyword search).
 """
 
 from qdrant_client import QdrantClient
@@ -11,15 +11,15 @@ from qdrant_client.models import (
 )
 
 COLLECTION_NAME = "edge_rag"
-DENSE_VECTOR_SIZE = 384  # размерность для sentence-transformers/all-MiniLM-L6-v2
+DENSE_VECTOR_SIZE = 384  # dimension for sentence-transformers/all-MiniLM-L6-v2
 
 client = QdrantClient(url="http://localhost:6333")
 
 
 def create_collection():
-    """Создаёт коллекцию с dense и sparse полями, если она ещё не существует."""
+    """Creates the collection with dense and sparse fields if it doesn't exist yet."""
     if client.collection_exists(COLLECTION_NAME):
-        print(f"Коллекция '{COLLECTION_NAME}' уже существует, пересоздание не требуется.")
+        print(f"Collection '{COLLECTION_NAME}' already exists, skipping creation.")
         return
 
     client.create_collection(
@@ -31,7 +31,7 @@ def create_collection():
             "sparse": SparseVectorParams(),
         },
     )
-    print(f"Коллекция '{COLLECTION_NAME}' создана.")
+    print(f"Collection '{COLLECTION_NAME}' created.")
 
 
 if __name__ == "__main__":

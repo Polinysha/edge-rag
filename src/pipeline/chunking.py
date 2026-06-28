@@ -1,6 +1,6 @@
 """
-Разбиение извлечённого текста на чанки фиксированного размера (baseline)
-с сохранением метаданных: source, page_num, chunk_idx.
+Splitting extracted text into fixed-size chunks (baseline)
+with metadata preserved: source, page_num, chunk_idx.
 """
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -16,8 +16,8 @@ splitter = RecursiveCharacterTextSplitter(
 
 def chunk_pages(pages: list[dict]) -> list[dict]:
     """
-    Принимает список страниц от extract_pdf: [{page_num, text, source}, ...]
-    Возвращает список чанков: [{text, source, page_num, chunk_idx}, ...]
+    Takes a list of pages from extract_pdf: [{page_num, text, source}, ...]
+    Returns a list of chunks: [{text, source, page_num, chunk_idx}, ...]
     """
     chunks = []
     chunk_idx = 0
@@ -47,10 +47,10 @@ if __name__ == "__main__":
     pages = extract_pdf(test_path)
     chunks = chunk_pages(pages)
 
-    print(f"Страниц: {len(pages)}, чанков: {len(chunks)}")
+    print(f"Pages: {len(pages)}, chunks: {len(chunks)}")
     print()
     for c in chunks[:3]:
         print(f"--- chunk_idx={c['chunk_idx']}, page_num={c['page_num']}, source={c['source']} ---")
-        print(f"длина текста: {len(c['text'])}")
+        print(f"text length: {len(c['text'])}")
         print(c["text"][:150])
         print()

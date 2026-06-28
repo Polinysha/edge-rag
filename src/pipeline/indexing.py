@@ -1,5 +1,5 @@
 """
-Индексирование чанков в Qdrant: векторизация + загрузка точек батчами.
+Indexing chunks into Qdrant: vectorization + batched point upload.
 """
 
 import uuid
@@ -13,9 +13,9 @@ BATCH_SIZE = 64
 
 def index_chunks(chunks: list[dict]) -> int:
     """
-    Принимает список чанков [{text, source, page_num, chunk_idx}, ...].
-    Векторизует тексты, формирует точки и отправляет в Qdrant батчами.
-    Возвращает количество проиндексированных чанков.
+    Takes a list of chunks [{text, source, page_num, chunk_idx}, ...].
+    Vectorizes texts, builds points, and sends them to Qdrant in batches.
+    Returns the number of indexed chunks.
     """
     if not chunks:
         return 0
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     chunks = chunk_pages(pages)
 
     count = index_chunks(chunks)
-    print(f"Проиндексировано чанков: {count}")
+    print(f"Indexed chunks: {count}")
 
     total_in_collection = client.count(COLLECTION_NAME).count
-    print(f"Всего точек в коллекции '{COLLECTION_NAME}': {total_in_collection}")
+    print(f"Total points in collection '{COLLECTION_NAME}': {total_in_collection}")

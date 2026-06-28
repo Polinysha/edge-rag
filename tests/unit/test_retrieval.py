@@ -1,15 +1,15 @@
 """
-Юнит-тесты на retrieval.py (search).
+Unit tests for retrieval.py (search).
 
-Использует ОТДЕЛЬНУЮ тестовую коллекцию (не edge_rag), чтобы:
-- тест был детерминированным (известно, что именно должно найтись)
-- тест не зависел от того, что сейчас лежит в рабочей коллекции
-- тест не портил рабочие данные
+Uses a SEPARATE test collection (not edge_rag), so that:
+- the test is deterministic (we know exactly what should be found)
+- the test doesn't depend on whatever is currently in the production collection
+- the test doesn't corrupt production data
 
-Запуск:
+Run:
     uv run pytest tests/unit/test_retrieval.py -v
 
-Требует запущенный Qdrant на localhost:6333.
+Requires a running Qdrant instance at localhost:6333.
 """
 
 import sys
@@ -26,20 +26,20 @@ from src.pipeline.embedding import embed, EMBEDDING_SIZE
 
 TEST_COLLECTION = "edge_rag_test_retrieval"
 
-# Заранее известные чанки: на вопрос про "договор о практике" должен находиться chunk 0,
-# на вопрос про "погоду" — ничего релевантного из этого набора.
+# Pre-defined chunks: a question about "internship agreement" should match chunk 0,
+# a question about "weather" should not match anything relevant in this set.
 FIXTURE_CHUNKS = [
-    {"text": "Договор об организации практики учащихся в колледже", "source": "doc.pdf", "page_num": 1, "chunk_idx": 0},
-    {"text": "Рецепт борща: свёкла, картофель, капуста, мясо", "source": "doc.pdf", "page_num": 1, "chunk_idx": 1},
-    {"text": "Инструкция по установке Python и pip на Windows", "source": "doc.pdf", "page_num": 2, "chunk_idx": 2},
-    {"text": "Правила прохождения учебной и производственной практики студентами", "source": "doc.pdf", "page_num": 2, "chunk_idx": 3},
-    {"text": "История развития космонавтики в XX веке", "source": "doc.pdf", "page_num": 3, "chunk_idx": 4},
+    {"text": "Internship agreement for college students", "source": "doc.pdf", "page_num": 1, "chunk_idx": 0},
+    {"text": "Borscht recipe: beets, potatoes, cabbage, meat", "source": "doc.pdf", "page_num": 1, "chunk_idx": 1},
+    {"text": "Instructions for installing Python and pip on Windows", "source": "doc.pdf", "page_num": 2, "chunk_idx": 2},
+    {"text": "Rules for students completing academic and work internships", "source": "doc.pdf", "page_num": 2, "chunk_idx": 3},
+    {"text": "History of space exploration in the 20th century", "source": "doc.pdf", "page_num": 3, "chunk_idx": 4},
 ]
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_test_collection():
-    """Создаёт тестовую коллекцию с фикстурными чанками перед тестами и удаляет после."""
+    """Creates the test collection with fixture chunks before tests and tears it down after."""
     if client.collection_exists(TEST_COLLECTION):
         client.delete_collection(TEST_COLLECTION)
 
@@ -65,7 +65,7 @@ def setup_test_collection():
 
 
 def search_in_test_collection(question: str, top_k: int = 5) -> list[dict]:
-    """Локальная копия search(), но указывающая на тестовую коллекцию."""
+    """Local copy of search(), but pointing at the test collection."""
     query_vector = embed(question)
     results = client.query_points(
         collection_name=TEST_COLLECTION,
@@ -78,22 +78,22 @@ def search_in_test_collection(question: str, top_k: int = 5) -> list[dict]:
 
 class TestSearch:
 
-    def test_находит_релевантный_чанк_про_практику(self):
-        results = search_in_test_collection("договор о практике студента", top_k=3)
+    def test_finds_relevant_chunk_about_internship(self):
+        results = search_in_test_collection("student internship agreement", top_k=3)
         texts = [r["text"] for r in results]
-        assert any("практики" in t for t in texts)
+        assert any("internship" in t.lower() for t in texts)
 
-    def test_находит_релевантный_чанк_про_python(self):
-        results = search_in_test_collection("как установить Python", top_k=3)
+    def test_finds_relevant_chunk_about_python(self):
+        results = search_in_test_collection("how to install Python", top_k=3)
         texts = [r["text"] for r in results]
         assert any("Python" in t for t in texts)
 
-    def test_top_k_ограничивает_число_результатов(self):
-        results = search_in_test_collection("любой текст", top_k=2)
+    def test_top_k_limits_number_of_results(self):
+        results = search_in_test_collection("any text", top_k=2)
         assert len(results) == 2
 
-    def test_результаты_отсортированы_по_убыванию_score(self):
-        results = search_in_test_collection("практика студентов", top_k=5)
+    def test_results_sorted_by_descending_score(self):
+        results = search_in_test_collection("student internship", top_k=5)
         scores = [r["score"] for r in results]
         assert scores == sorted(scores, reverse=True)
 
