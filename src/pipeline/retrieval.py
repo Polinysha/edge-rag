@@ -1,17 +1,9 @@
-"""
-Basic dense vector search — the foundation of retrieval,
-which will later be extended into hybrid search (dense + sparse).
-"""
-
-from src.pipeline.qdrant_setup import client, COLLECTION_NAME
+from src.db.qdrant_setup import client, COLLECTION_NAME
 from src.pipeline.embedding import embed
 
 
 def search(question: str, top_k: int = 5) -> list[dict]:
-    """
-    Vectorizes the question and searches for the top_k most similar chunks in Qdrant.
-    Returns a list of dicts: {text, source, page_num, chunk_idx, score}.
-    """
+
     query_vector = embed(question)
 
     results = client.query_points(

@@ -1,10 +1,4 @@
-"""
-Generation: turns retrieved chunks into an answer strictly grounded in context.
-If the context doesn't contain the answer, the model is instructed to say so
-explicitly instead of making something up.
-"""
-
-from src.pipeline.llm_client import call_llm
+from src.llm.llm_client import call_llm
 
 SYSTEM_PROMPT = (
     "You are a question-answering assistant. Answer the user's question using ONLY "
@@ -16,7 +10,6 @@ SYSTEM_PROMPT = (
 
 
 def build_context(chunks: list[dict]) -> str:
-    """Joins chunks into a single text block, each one labeled with its source and page."""
     parts = []
     for c in chunks:
         parts.append(f"[Source: {c['source']}, page {c['page_num']}]\n{c['text']}")
@@ -24,10 +17,7 @@ def build_context(chunks: list[dict]) -> str:
 
 
 def generate(question: str, chunks: list[dict]) -> str:
-    """
-    Takes a question and a list of retrieved chunks (as returned by search()),
-    builds a grounded prompt, and returns the LLM's answer text.
-    """
+
     context = build_context(chunks)
 
     messages = [

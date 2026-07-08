@@ -1,15 +1,11 @@
-"""
-FastAPI service exposing the Edge-RAG pipeline over HTTP.
-"""
-
 import os
 from fastapi import FastAPI, UploadFile, File
+from langsmith import traceable
 from pydantic import BaseModel
 
 from src.pipeline.extraction import extract_pdf
-from src.pipeline.chunking import chunk_pages
+from src.chunking.chunking import chunk_pages
 from src.pipeline.indexing import index_chunks
-from src.pipeline.pipeline import ask as ask_pipeline
 
 app = FastAPI(title="Edge-RAG API")
 
@@ -23,16 +19,11 @@ class AskRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    """Simple liveness check — doesn't touch the LLM or Qdrant."""
     return {"status": "ok", "version": VERSION}
 
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    """
-    Accepts a PDF, saves it to data/, and runs it through the indexing
-    pipeline synchronously: extract -> chunk -> embed -> upsert into Qdrant.
-    """
     os.makedirs(DATA_DIR, exist_ok=True)
     save_path = os.path.join(DATA_DIR, file.filename)
 
@@ -52,16 +43,22 @@ async def upload(file: UploadFile = File(...)):
 
 
 @app.post("/ask")
+@traceable(name="ask")
 def ask(request: AskRequest):
-    """
-    Answers a question against whatever is currently indexed in Qdrant.
-    Right now this calls the simple ask() pipeline from Task 3 (search + generate,
-    no LangGraph yet). When the graph lands in Task 5, only this implementation
-    changes — the request/response contract stays the same.
-    """
-    result = ask_pipeline(request.question)
+    from src.pipeline.graph import get_graph
+
+    graph = get_graph()
+    state = graph.invoke({"question": request.question, "retry_count": 0})
+
     return {
-        "answer": result["answer"],
-        "sources": result["sources"],
-        "metrics": {},  # populated once RAGAS evaluation is wired in
+        "answer": state.get("generation", ""),
+        "sources": [
+            {"source": doc["source"], "page_num": doc["page_num"]}
+            for doc in state.get("documents", [])
+        ],
+        "metrics": {
+            "context_relevance": state.get("context_relevance"),
+            "faithfulness": state.get("faithfulness"),
+            "answer_relevance": state.get("answer_relevance"),
+        },
     }
