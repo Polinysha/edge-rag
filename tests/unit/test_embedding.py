@@ -1,10 +1,3 @@
-"""
-Unit tests for embedding.py.
-
-Run:
-    uv run pytest tests/unit/test_embedding.py -v
-"""
-
 import sys
 import os
 
@@ -29,8 +22,6 @@ class TestEmbed:
             assert len(v) == EMBEDDING_SIZE
 
     def test_single_item_list_stays_a_list_of_vectors(self):
-        # edge case: ['text'] should remain a list of vectors,
-        # not collapse into a single vector like passing a plain string would
         vectors = embed(["text"])
         assert isinstance(vectors, list)
         assert len(vectors) == 1

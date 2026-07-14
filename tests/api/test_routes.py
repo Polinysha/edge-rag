@@ -1,20 +1,3 @@
-"""
-API contract tests for the FastAPI service.
-
-These tests check the API CONTRACT — status codes, response shape, error handling —
-not the quality of generated answers. Answer quality is evaluated separately via
-RAGAS on a golden dataset (see tests/e2e once it exists). Mixing the two would make
-these tests slow, flaky (LLM calls aren't deterministic), and would blur what each
-test suite is actually responsible for.
-
-/upload and /ask are tested with the underlying pipeline functions mocked out,
-so this suite runs in seconds and doesn't need a live Qdrant instance or an
-OpenRouter API key to pass.
-
-Run:
-    uv run pytest tests/api/test_routes.py -v
-"""
-
 import sys
 import os
 from io import BytesIO
@@ -73,13 +56,22 @@ class TestUpload:
 
 class TestAsk:
 
-    def test_returns_200_with_mocked_pipeline(self):
-        fake_result = {
-            "answer": "This is a mocked answer.",
-            "sources": [{"source": "fake.pdf", "page_num": 1}],
+    def test_returns_200_with_mocked_graph(self):
+        fake_state = {
+            "generation": "This is a mocked answer.",
+            "documents": [
+                {"source": "fake.pdf", "page_num": 1, "text": "...", "chunk_idx": 0}
+            ],
+            "context_relevance": 0.9,
+            "faithfulness": 0.8,
+            "answer_relevance": 0.7,
         }
 
-        with patch("src.api.main.ask_pipeline", return_value=fake_result):
+        class FakeGraph:
+            def invoke(self, _inputs):
+                return fake_state
+
+        with patch("src.pipeline.graph.get_graph", return_value=FakeGraph()):
             response = client.post("/ask", json={"question": "any question"})
 
         assert response.status_code == 200
@@ -88,6 +80,8 @@ class TestAsk:
         assert "sources" in body
         assert "metrics" in body
         assert body["answer"] == "This is a mocked answer."
+        assert body["sources"] == [{"source": "fake.pdf", "page_num": 1}]
+        assert body["metrics"]["faithfulness"] == 0.8
 
     def test_missing_question_field_returns_422(self):
         response = client.post("/ask", json={})
