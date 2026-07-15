@@ -8,7 +8,7 @@ from qdrant_client.models import (
 COLLECTION_NAME = "edge_rag"
 DENSE_VECTOR_SIZE = 384
 
-client = QdrantClient(url="http://localhost:6333")
+client = QdrantClient(host="127.0.0.1", grpc_port=6334, prefer_grpc=True)
 
 
 def create_collection():

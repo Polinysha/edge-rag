@@ -6,12 +6,9 @@ from openai import OpenAI, AsyncOpenAI
 
 load_dotenv()
 
-BASE_URL = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
-API_KEY_ENV = "OPENROUTER_API_KEY" if os.getenv("OPENROUTER_API_KEY") else "GROQ_API_KEY"
-if os.getenv("OPENROUTER_API_KEY"):
-    MODEL_NAME = "openrouter/free"
-else:
-    MODEL_NAME = "llama-3.1-8b-instant"
+BASE_URL = "https://api.groq.com/openai/v1"
+MODEL_NAME = "llama-3.1-8b-instant"
+API_KEY = os.getenv("GROQ_API_KEY")
 
 REQUEST_TIMEOUT_S = 60.0
 SDK_MAX_RETRIES = 2
@@ -20,14 +17,14 @@ RETRY_BACKOFF_S = 5.0
 
 client = OpenAI(
     base_url=BASE_URL,
-    api_key=os.getenv(API_KEY_ENV),
+    api_key=API_KEY,
     timeout=REQUEST_TIMEOUT_S,
     max_retries=SDK_MAX_RETRIES,
 )
 
 async_client = AsyncOpenAI(
     base_url=BASE_URL,
-    api_key=os.getenv(API_KEY_ENV),
+    api_key=API_KEY,
     timeout=REQUEST_TIMEOUT_S,
     max_retries=SDK_MAX_RETRIES,
 )

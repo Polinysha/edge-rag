@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import csv
+import os
 
 from ragas.llms import llm_factory
 from ragas.embeddings import HuggingFaceEmbeddings
@@ -11,7 +12,7 @@ from ragas.metrics.collections import (
     Faithfulness,
 )
 
-from src.llm.llm_client import async_client as openrouter_async_client, MODEL_NAME
+from src.llm.llm_client import async_client as groq_async_client, MODEL_NAME
 from src.pipeline.retrieval import search
 from src.pipeline.generation import generate
 from src.pipeline.graph import build_graph
@@ -24,9 +25,14 @@ METRIC_NAMES = ("context_relevance", "faithfulness", "answer_relevance", "contex
 RESULTS_CSV = "data/eval_results.csv"
 COMPARISON_MD = "data/eval_comparison.md"
 
+# Инициализируем LLM для RAGAS через новый llm_factory, передавая ему наш асинхронный клиент Groq
 _ragas_llm = llm_factory(
-    model=MODEL_NAME, provider="openai", client=openrouter_async_client, max_tokens=2000
+    model=MODEL_NAME,
+    provider="openai",
+    client=groq_async_client,
+    max_tokens=2000
 )
+
 _ragas_embeddings = HuggingFaceEmbeddings(model="sentence-transformers/all-MiniLM-L6-v2")
 
 _faithfulness = Faithfulness(llm=_ragas_llm)
@@ -34,50 +40,63 @@ _context_relevance = ContextRelevance(llm=_ragas_llm)
 _answer_relevancy = AnswerRelevancy(llm=_ragas_llm, embeddings=_ragas_embeddings)
 _context_precision = ContextPrecisionWithReference(llm=_ragas_llm)
 
+
 async def _score_with_retries(coro_factory, metric_name: str) -> float:
     last_error = None
-    for _ in range(MAX_RETRIES_PER_METRIC):
+    for attempt in range(MAX_RETRIES_PER_METRIC):
         try:
             result = await coro_factory()
             return result.value
         except Exception as e:  # noqa: BLE001 - flaky free-tier metric calls
             last_error = e
+            # Ожидаем 8 секунд перед следующей попыткой, чтобы лимиты токенов сбросились
+            print(f"    ! {metric_name} пауза {attempt + 1}/{MAX_RETRIES_PER_METRIC} (ждём 8 сек из-за лимитов...)")
+            await asyncio.sleep(8)
+
     print(f"    ! {metric_name} failed after {MAX_RETRIES_PER_METRIC} attempts "
           f"({last_error}); falling back to 0.0")
     return 0.0
 
 
 async def _score_triple(question: str, answer: str, contexts: list[str], reference: str) -> dict:
-    faithfulness, context_relevance, answer_relevance, context_precision = await asyncio.gather(
-        _score_with_retries(
-            lambda: _faithfulness.ascore(
-                user_input=question, response=answer, retrieved_contexts=contexts
-            ),
-            "faithfulness",
+    # Запускаем метрики СТРОГО по очереди с паузами, чтобы не пробить лимит в 6000 токенов в минуту
+
+    faithfulness = await _score_with_retries(
+        lambda: _faithfulness.ascore(
+            user_input=question, response=answer, retrieved_contexts=contexts
         ),
-        _score_with_retries(
-            lambda: _context_relevance.ascore(
-                user_input=question, retrieved_contexts=contexts
-            ),
-            "context_relevance",
-        ),
-        _score_with_retries(
-            lambda: _answer_relevancy.ascore(user_input=question, response=answer),
-            "answer_relevance",
-        ),
-        _score_with_retries(
-            lambda: _context_precision.ascore(
-                user_input=question, reference=reference, retrieved_contexts=contexts
-            ),
-            "context_precision",
-        ),
+        "faithfulness",
     )
+    await asyncio.sleep(4)  # Пауза для сброса счетчика TPM (Tokens Per Minute)
+
+    context_relevance = await _score_with_retries(
+        lambda: _context_relevance.ascore(
+            user_input=question, retrieved_contexts=contexts
+        ),
+        "context_relevance",
+    )
+    await asyncio.sleep(4)
+
+    answer_relevance = await _score_with_retries(
+        lambda: _answer_relevancy.ascore(user_input=question, response=answer),
+        "answer_relevance",
+    )
+    await asyncio.sleep(4)
+
+    context_precision = await _score_with_retries(
+        lambda: _context_precision.ascore(
+            user_input=question, reference=reference, retrieved_contexts=contexts
+        ),
+        "context_precision",
+    )
+
     return {
         "context_relevance": context_relevance,
         "faithfulness": faithfulness,
         "answer_relevance": answer_relevance,
         "context_precision": context_precision,
     }
+
 
 def run_baseline_arm(question: str) -> tuple[str, list[str]]:
     chunks = search(question, top_k=BASELINE_TOP_K)
@@ -87,11 +106,11 @@ def run_baseline_arm(question: str) -> tuple[str, list[str]]:
 
 
 def run_graph_arm(graph, question: str) -> tuple[str, list[str]]:
-
     state = graph.invoke({"question": question, "retry_count": 0})
     answer = state.get("generation", "")
     contexts = [doc["text"] for doc in state.get("documents", [])]
     return answer, contexts
+
 
 def aggregate(rows: list[dict], prefix: str) -> dict:
     means = {}
@@ -137,6 +156,7 @@ def write_results_csv(rows: list[dict], path: str = RESULTS_CSV) -> None:
         writer.writeheader()
         writer.writerows(rows)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Task 6 RAGAS evaluation")
     parser.add_argument("--limit", type=int, default=None,
@@ -171,6 +191,11 @@ def main():
         baseline_scores = asyncio.run(
             _score_triple(question, baseline_answer, baseline_ctx, ground_truth)
         )
+
+        # Добавляем небольшую паузу между оценкой бейзлайна и графа
+        print("    --- Переход к оценке графа, небольшая пауза ---")
+        asyncio.run(asyncio.sleep(4))
+
         graph_scores = asyncio.run(
             _score_triple(question, graph_answer, graph_ctx, ground_truth)
         )
@@ -208,4 +233,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
