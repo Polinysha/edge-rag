@@ -54,3 +54,90 @@ Two distinct problem categories showed up here, and they need different fixes:
 2. Retrieval misses on questions phrased differently than the source text — exactly what
    query expansion and the grade_documents retry loop (both coming in Task 4-5) are meant
    to address.
+
+# RAGAS evaluate node observations (Task 5)
+
+## Free models and structured output don't mix reliably
+
+Building the `evaluate` node (RAGAS scoring) surfaced the same free-tier instability from a
+different angle. RAGAS's metrics use the `instructor` library to force the LLM into returning
+JSON matching a Pydantic schema. Across a single debugging session:
+
+- `openrouter/free` (the random router) returned truncated/invalid JSON for the faithfulness
+  metric's statement-generation step.
+- Pinning to `openai/gpt-oss-120b:free` (a reasoning model) "fixed" the JSON shape but leaked
+  stray whitespace tokens from its chain-of-thought into the structured output, breaking
+  parsing anyway — and then hit an upstream rate limit on retry.
+- Pinning to `meta-llama/llama-4-scout:free` failed immediately: the model lost its free-tier
+  status between when this was written and when it was tested. Same failure mode as
+  `llama-3.1-8b:free` in Task 3 — free model slugs on OpenRouter are not stable over time.
+
+Settled on: keep using the same `openrouter/free` router as the rest of the pipeline (for
+consistency and because pinning specific slugs has failed twice now), but wrap each of the
+three RAGAS metric calls in a retry loop (3 attempts) with a graceful fallback to a score of
+0.0 if all attempts fail. This means one flaky metric doesn't crash the whole `evaluate` node
+— the other two metrics still get scored and logged.
+
+In one real run, `faithfulness` failed all 3 attempts (same truncated-JSON issue) and fell
+back to 0.0, while `context_relevance` (1.0) and `answer_relevance` (0.58) succeeded normally.
+The 0.0 faithfulness score here is a measurement failure, not a real signal that the answer
+was unfaithful to the context — worth keeping in mind when looking at aggregate RAGAS numbers
+later (Task 6): a 0.0 doesn't always mean "bad answer", sometimes it means "metric call failed".
+
+
+---
+
+## Task 6 — RAGAS Evaluation Dataset: ЗАКРЫТ ✅
+
+**Выполнено:**
+
+1. ✅ **Расширенный датасет** — 27 пар question/ground_truth в `data/eval_dataset.py`
+   - 12 оригинальных вопросов из Task 3
+   - 15 дополнительных вопросов про тот же документ
+
+2. ✅ **RAGAS evaluation pipeline** — `src/pipeline/run_eval.py`
+   - Сравнивает baseline (Task 3) vs graph (Task 5)
+   - 4 метрики: context_relevance, faithfulness, answer_relevance, context_precision
+   - Retry-логика для нестабильных free-tier LLM вызовов
+
+3. ✅ **Hybrid search** — dense + sparse с RRF в `retrieve_node.py`
+   - Dense: Qdrant query по вектору
+   - Sparse: BM25 через rank_bm25
+   - RRF merge с k=60
+
+4. ✅ **Результаты оценки** (13 вопросов, без PIPELINE ERROR):
+   - context_relevance: 0.556
+   - faithfulness: 0.329
+   - answer_relevance: 0.195
+
+5. ✅ **Анализ слабых запросов** — `data/weak_queries_analysis.md`
+   - Выделены худшие 20% по context_relevance
+   - Диагностированы проблемы (retrieval не находит релевантные чанки)
+   - Рекомендации для Task 7
+
+6. ✅ **Thresholds для регрессии** — `tests/e2e/thresholds.json`
+   ```json
+   {
+     "context_relevance": 0.506,
+     "faithfulness": 0.279,
+     "answer_relevance": 0.145
+   }
+   ```
+
+7. ✅ **E2E regression test** — обновлён `tests/e2e/test_graph.py`
+   - Новый тест `test_graph_metrics_above_thresholds()`
+   - Проверяет метрики против порогов с допуском 0.05
+
+**Известные ограничения:**
+
+- Низкая answer_relevance (0.195) — модель часто говорит "answer is not in context"
+- Много 0.0 метрик из-за нестабильности free-tier LLM
+- Не все 27 вопросов были успешно прогнаны (некоторые упали с PIPELINE ERROR)
+
+**Следующие шаги (Task 7):**
+
+1. Parent-Child chunking — индексировать маленькие чанки, отдавать большие блоки
+2. Структурный детект — резать по заголовкам PDF
+3. Reranker — cross-encoder для точного ранжирования
+
+Ожидаемый эффект: рост context_relevance до 0.7+ и reduction "answer is not in context" ответов.

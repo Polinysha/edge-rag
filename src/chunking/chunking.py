@@ -1,8 +1,3 @@
-"""
-Splitting extracted text into fixed-size chunks (baseline)
-with metadata preserved: source, page_num, chunk_idx.
-"""
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 CHUNK_SIZE = 400
@@ -15,10 +10,7 @@ splitter = RecursiveCharacterTextSplitter(
 
 
 def chunk_pages(pages: list[dict]) -> list[dict]:
-    """
-    Takes a list of pages from extract_pdf: [{page_num, text, source}, ...]
-    Returns a list of chunks: [{text, source, page_num, chunk_idx}, ...]
-    """
+
     chunks = []
     chunk_idx = 0
 
@@ -40,7 +32,7 @@ def chunk_pages(pages: list[dict]) -> list[dict]:
 
 if __name__ == "__main__":
     import sys
-    sys.path.insert(0, ".")
+    sys.path.insert(0, "../pipeline")
     from src.pipeline.extraction import extract_pdf
 
     test_path = sys.argv[1] if len(sys.argv) > 1 else "data/test.pdf"

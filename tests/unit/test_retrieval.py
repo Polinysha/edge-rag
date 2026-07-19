@@ -1,17 +1,3 @@
-"""
-Unit tests for retrieval.py (search).
-
-Uses a SEPARATE test collection (not edge_rag), so that:
-- the test is deterministic (we know exactly what should be found)
-- the test doesn't depend on whatever is currently in the production collection
-- the test doesn't corrupt production data
-
-Run:
-    uv run pytest tests/unit/test_retrieval.py -v
-
-Requires a running Qdrant instance at localhost:6333.
-"""
-
 import sys
 import os
 import uuid
@@ -21,13 +7,11 @@ from qdrant_client.models import VectorParams, Distance, PointStruct
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from src.pipeline.qdrant_setup import client
+from src.db.qdrant_setup import client
 from src.pipeline.embedding import embed, EMBEDDING_SIZE
 
 TEST_COLLECTION = "edge_rag_test_retrieval"
 
-# Pre-defined chunks: a question about "internship agreement" should match chunk 0,
-# a question about "weather" should not match anything relevant in this set.
 FIXTURE_CHUNKS = [
     {"text": "Internship agreement for college students", "source": "doc.pdf", "page_num": 1, "chunk_idx": 0},
     {"text": "Borscht recipe: beets, potatoes, cabbage, meat", "source": "doc.pdf", "page_num": 1, "chunk_idx": 1},
@@ -39,7 +23,6 @@ FIXTURE_CHUNKS = [
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_test_collection():
-    """Creates the test collection with fixture chunks before tests and tears it down after."""
     if client.collection_exists(TEST_COLLECTION):
         client.delete_collection(TEST_COLLECTION)
 
@@ -65,7 +48,6 @@ def setup_test_collection():
 
 
 def search_in_test_collection(question: str, top_k: int = 5) -> list[dict]:
-    """Local copy of search(), but pointing at the test collection."""
     query_vector = embed(question)
     results = client.query_points(
         collection_name=TEST_COLLECTION,

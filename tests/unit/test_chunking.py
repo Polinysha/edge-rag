@@ -1,16 +1,9 @@
-"""
-Unit tests for chunking.py.
-
-Run:
-    uv run pytest tests/unit/test_chunking.py -v
-"""
-
 import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from src.pipeline.chunking import chunk_pages, CHUNK_SIZE
+from src.chunking.chunking import chunk_pages, CHUNK_SIZE
 
 
 def make_page(text: str, page_num: int = 1, source: str = "test.pdf") -> dict:
@@ -20,12 +13,11 @@ def make_page(text: str, page_num: int = 1, source: str = "test.pdf") -> dict:
 class TestChunkPages:
 
     def test_does_not_exceed_chunk_size_with_large_margin(self):
-        long_text = "word " * 500  # deliberately long text
+        long_text = "word " * 500
         pages = [make_page(long_text)]
         chunks = chunk_pages(pages)
 
         for c in chunks:
-            # allow a small margin, but no more than 1.5x the target size
             assert len(c["text"]) <= CHUNK_SIZE * 1.5
 
     def test_preserves_all_metadata(self):
@@ -73,7 +65,6 @@ class TestChunkPages:
 
         assert len(page1_chunks) > 0
         assert len(page2_chunks) > 0
-        # chunk_idx is continuous, not reset on a new page
         assert page2_chunks[0]["chunk_idx"] > page1_chunks[-1]["chunk_idx"]
 
 

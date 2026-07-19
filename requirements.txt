@@ -1,0 +1,12 @@
+langchain
+langgraph
+qdrant-client
+pymupdf
+pytesseract
+fastapi
+uvicorn
+streamlit
+sentence-transformers
+python-dotenv
+pydantic
+requests

@@ -8,17 +8,35 @@ dependencies = [
     "fastapi>=0.138.1",
     "httpx>=0.28.1",
     "langchain>=1.3.11",
+    "langchain-community>=0.4.2",
+    "langchain-core>=1.4.8",
+    "langchain-google-vertexai>=3.2.4",
+    "langchain-groq>=1.1.3",
     "langgraph>=1.2.6",
+    "langsmith>=0.9.3",
     "openai>=2.44.0",
+    "pdfplumber>=0.11.10",
     "pillow>=12.2.0",
     "pymupdf>=1.27.2.3",
     "pytesseract>=0.3.13",
-    "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
     "python-dotenv>=1.2.2",
     "qdrant-client>=1.18.0",
-    "ragas>=0.4.3",
+    "rank-bm25>=0.2.2",
     "sentence-transformers>=5.6.0",
     "streamlit>=1.58.0",
     "uvicorn>=0.49.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ragas>=0.4.3",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: end-to-end tests that hit the real LLM/RAGAS (run with -m slow)",
+]
+addopts = "-m 'not slow'"
+asyncio_mode = "auto"

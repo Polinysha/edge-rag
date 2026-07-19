@@ -1,8 +1,3 @@
-"""
-Turning text into a vector (embedding) via sentence-transformers/all-MiniLM-L6-v2.
-The model is loaded once at module import, not on every call.
-"""
-
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
@@ -12,10 +7,7 @@ _model = SentenceTransformer(MODEL_NAME, device="cpu")
 
 
 def embed(texts: str | list[str]) -> list[float] | list[list[float]]:
-    """
-    Takes a string or a list of strings, returns vector(s) of size 384.
-    For a single string — a list of 384 floats. For a list of strings — a list of such lists.
-    """
+
     is_single = isinstance(texts, str)
     input_texts = [texts] if is_single else texts
 

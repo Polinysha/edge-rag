@@ -1,10 +1,3 @@
-"""
-Unit tests for extraction.py: classify_page, clean_text, extract_pdf.
-
-Run:
-    uv run pytest tests/unit/test_extraction.py -v
-"""
-
 import sys
 import os
 
@@ -18,7 +11,6 @@ TEST_PDF_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "tes
 
 
 class TestCleanText:
-    """Tests for clean_text — doesn't require a PDF, pure string -> string function."""
 
     def test_joins_hyphenated_line_break(self):
         text = "infor-\nmation"
@@ -45,17 +37,11 @@ class TestCleanText:
         assert "\n\n\n" not in result
 
     def test_empty_string_does_not_raise(self):
-        # edge case — empty input should not raise an error
         result = clean_text("")
         assert result == ""
 
 
 class TestExtractPdf:
-    """
-    Tests for extract_pdf — require a real PDF file at data/test.pdf.
-    If the file is missing, tests are skipped (not failed) so they don't
-    block the rest of the suite on machines without the test file.
-    """
 
     @pytest.mark.skipif(
         not os.path.exists(TEST_PDF_PATH),
@@ -84,7 +70,6 @@ class TestExtractPdf:
         reason="No test PDF at data/test.pdf — add the file to run this test",
     )
     def test_page_text_is_not_empty_for_native_pdf(self):
-        # For native PDFs (with a text layer) the text should not be empty
         result = extract_pdf(TEST_PDF_PATH)
         non_empty_pages = [p for p in result if len(p["text"]) > 0]
         assert len(non_empty_pages) > 0, "No page returned any text"

@@ -1,12 +1,3 @@
-"""
-Runs a fixed list of questions (with ground_truth) through the simple ask()
-pipeline and saves the results to a CSV file. This is the baseline snapshot
-used later to compare against the LangGraph version of the pipeline.
-
-Fill in QUESTIONS below with 10-15 questions about your test document
-(data/test.pdf) and the correct answer for each one.
-"""
-
 import csv
 import sys
 

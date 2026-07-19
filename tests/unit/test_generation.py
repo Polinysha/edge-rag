@@ -1,19 +1,3 @@
-"""
-Unit test for generate() — context discipline.
-
-Checks that when the provided chunks don't contain the answer to the question,
-the model says so explicitly instead of making something up. This is the single
-most important property of generate(): it's easy to verify automatically, and
-easy to break accidentally with a careless prompt change.
-
-Run:
-    uv run pytest tests/unit/test_generation.py -v
-
-Requires OPENROUTER_API_KEY in .env (makes real LLM calls — not mocked).
-The free-tier router is not perfectly deterministic, so a couple of retries
-are allowed before failing.
-"""
-
 import sys
 import os
 
@@ -22,7 +6,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 import pytest
 from src.pipeline.generation import generate
 
-# Chunks about a completely unrelated topic, on purpose
 UNRELATED_CHUNKS = [
     {
         "text": "The recipe calls for two cups of flour, one egg, and a pinch of salt.",
@@ -75,8 +58,7 @@ class TestGenerateContextDiscipline:
         )
 
     def test_does_not_invent_unrelated_facts(self):
-        # a sanity check in the other direction: the answer shouldn't contain
-        # a plausible-looking but made-up capital name
+
         question = "What is the capital of France?"
         answer = generate(question, UNRELATED_CHUNKS)
         assert "paris" not in answer.lower()
