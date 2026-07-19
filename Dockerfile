@@ -7,14 +7,18 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src/ ./src/
 COPY data/ ./data/
 
 ENV PYTHONPATH=/app
+ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000 8501
